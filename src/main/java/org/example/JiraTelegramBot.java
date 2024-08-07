@@ -3,6 +3,7 @@ package org.example;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
@@ -134,6 +135,29 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
                 createJiraTask(taskName, taskDescription, taskImageUrl, taskDeadlineDate, taskDeadlineTime, assignee, customFieldId);
                 deleteMessage(chatId, messageId - 1);
                 sendMessageAndDeletePrevious(chatId, messageId, "Task successfully created and assigned to " + assignee);
+                SendMessage sendMessage =  new SendMessage();
+                sendMessage.setChatId(chatId);
+                sendMessage.setText("Task name: " + taskName
+                + "\nTask description: " + taskDescription
+                + "\nTask deadline date: " + taskDeadlineDate
+                + "\nTask deadline time: " + taskDeadlineTime
+                + "\nTask assignee: " + assignee
+                + "\nAdd task in this format?");
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                InlineKeyboardButton button1 = new InlineKeyboardButton();
+                button.setText("👍");
+                button.setCallbackData("true_add");
+                button1.setText("👎");
+                button1.setCallbackData("false_add");
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                List<InlineKeyboardButton> row1 = new ArrayList<>();
+                InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+                List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
+                row.add(button);
+                row1.add(button1);
+                rowList.add(row);
+                rowList.add(row1);
+                inlineKeyboardMarkup.setKeyboard(rowList);
                 currentStep = "START";
             }
         }
@@ -273,7 +297,7 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    class Developer {
+   static class Developer {
         String displayName;
         String accountId;
         String accountType;
