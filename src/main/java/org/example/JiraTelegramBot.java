@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class JiraTelegramBot extends TelegramLongPollingBot {
-    private static final String TELEGRAM_BOT_TOKEN = "7253651411:AAHzQOneY0DTMYewvp-wPLdBV-y30kaklbA";
+    private static final String TELEGRAM_BOT_TOKEN = "7359327916:AAFtj-RWkiTkFYueCF0eBMhhjmL97vPVtDU";
     private static final String JIRA_BASE_URL = "https://cineramauzb.atlassian.net";
     private static final String JIRA_API_TOKEN = "ATATT3xFfGF0tl5NLGh2m4lGj0dHVogGIc7Jw5XPk-tMRih2dSNL45mZdG5t89gp4TINeGbF274dX_AstX01XUCRW6weN4O17p3LlzMdaKQVsm9fw3tdI2Cyvlqz4dzRK-2jBlfXT5kp-yxRAvW7ktQQ9DZMqrwcNUWb57UfZrEeIaRDswBN__Q=0BA2AFAD";
     private static final String JIRA_EMAIL = "xumoyiddinxolmuminov858@gmail.com";
@@ -45,7 +45,7 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "chatgpthelperrrr_bot";
+        return "cineramajirabot";
     }
 
     @Override
