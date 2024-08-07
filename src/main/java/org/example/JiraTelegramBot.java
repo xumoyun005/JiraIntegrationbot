@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class JiraTelegramBot extends TelegramLongPollingBot {
-    private static final String TELEGRAM_BOT_TOKEN = "7359327916:AAFtj-RWkiTkFYueCF0eBMhhjmL97vPVtDU";
+    private static final String TELEGRAM_BOT_TOKEN = "7469790490:AAFM95hVZXL8-rPw5snIOLDW7ZqniaXsJwY";
     private static final String JIRA_BASE_URL = "https://cineramauzb.atlassian.net";
     private static final String JIRA_API_TOKEN = "ATATT3xFfGF0tl5NLGh2m4lGj0dHVogGIc7Jw5XPk-tMRih2dSNL45mZdG5t89gp4TINeGbF274dX_AstX01XUCRW6weN4O17p3LlzMdaKQVsm9fw3tdI2Cyvlqz4dzRK-2jBlfXT5kp-yxRAvW7ktQQ9DZMqrwcNUWb57UfZrEeIaRDswBN__Q=0BA2AFAD";
     private static final String JIRA_EMAIL = "xumoyiddinxolmuminov858@gmail.com";
@@ -28,11 +28,12 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
     private String currentStep = "START";
     private String taskName;
     private String taskDescription;
-    private String taskImageUrl;
+    private String taskMediaUrl;
     private String taskDeadlineDate;
     private String taskDeadlineTime;
     private final Map<String, String> developerNameToCustomFieldId = new HashMap<>();
     private final Map<String, String> developerNameToAccountId = new HashMap<>();
+    private boolean isPhoto = false;
 
     public static void main(String[] args) {
         try {
@@ -45,14 +46,13 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "cineramajirabot";
+        return "cinerama_taskbot";
     }
 
     @Override
     public String getBotToken() {
         return TELEGRAM_BOT_TOKEN;
     }
-
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage()) {
@@ -65,49 +65,42 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
                 switch (currentStep) {
                     case "START":
                         if (messageText.equals("/newtask")) {
-                            SendMessage sendMessage =  new SendMessage();
-                            sendMessage.setChatId(chatId);
-                            sendMessage.setText("Please enter the task name:");
-                            try {
-                                execute(sendMessage);
-                            } catch (TelegramApiException e) {
-                                throw new RuntimeException(e);
-                            }
+                            sendMessage(chatId, "Please enter the task name:");
                             currentStep = "TASK_NAME";
                         }
                         break;
                     case "TASK_NAME":
                         taskName = messageText;
-                        deleteMessage(chatId, messageId - 1);  // Delete the "Please enter the task name:" message
-                        sendMessageAndDeletePrevious(chatId, messageId, "Please enter the task description:");
+                        deleteMessage(chatId, messageId - 1);
+                        deleteMessage(chatId, messageId );
+                        sendMessage(chatId, "Please enter the task description:");
                         currentStep = "TASK_DESCRIPTION";
                         break;
                     case "TASK_DESCRIPTION":
                         taskDescription = messageText;
-                        deleteMessage(chatId, messageId - 1);  // Delete the "Please enter the task description:" message
-                        sendMessageAndDeletePrevious(chatId, messageId, "Please send the task image (JPG or PNG format):");
-                        currentStep = "TASK_IMAGE";
-                        break;
-                    case "TASK_IMAGE":
                         deleteMessage(chatId, messageId - 1);
-                        sendMessageAndDeletePrevious(chatId, messageId, "Please enter the task deadline date (e.g., 2024-08-15):");
-                        currentStep = "TASK_DEADLINE_DATE";
+                        deleteMessage(chatId, messageId );
+                        sendMediaChoiceMessage(chatId);
+                        currentStep = "TASK_MEDIA_CHOICE";
                         break;
                     case "TASK_DEADLINE_DATE":
                         taskDeadlineDate = messageText;
-                        deleteMessage(chatId, messageId - 1);  // Delete the "Please enter the task deadline date:" message
-                        sendMessageAndDeletePrevious(chatId, messageId, "Please enter the task deadline time (e.g., 15:30):");
+                        deleteMessage(chatId, messageId - 1);
+                        deleteMessage(chatId, messageId );
+                        sendMessage(chatId, "Please enter the task deadline time (e.g., 15:30):");
                         currentStep = "TASK_DEADLINE_TIME";
                         break;
                     case "TASK_DEADLINE_TIME":
                         taskDeadlineTime = messageText;
-                        deleteMessage(chatId, messageId - 1);  // Delete the "Please enter the task deadline time:" message
+                        deleteMessage(chatId, messageId - 1);
+                        sendDeveloperSelectionMessage(chatId);
+                        deleteMessage(chatId, messageId );
                         currentStep = "SELECT_DEVELOPER";
                         break;
                     default:
                         break;
                 }
-            } else if (message.hasPhoto() && currentStep.equals("TASK_IMAGE")) {
+            } else if (message.hasPhoto() && currentStep.equals("TASK_MEDIA_UPLOAD")) {
                 List<PhotoSize> photos = message.getPhoto();
                 PhotoSize largestPhoto = photos.stream()
                         .max(Comparator.comparing(PhotoSize::getFileSize))
@@ -116,12 +109,25 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
                     try {
                         String filePath = execute(new GetFile(largestPhoto.getFileId())).getFilePath();
                         deleteMessage(chatId, messageId - 1);
-                        taskImageUrl = "https://api.telegram.org/file/bot" + getBotToken() + "/" + filePath;
-                        sendMessageAndDeletePrevious(chatId, messageId, "Please enter the task deadline date (e.g., 2024-08-15):");
+                        deleteMessage(chatId, messageId);
+                        taskMediaUrl = "https://api.telegram.org/file/bot" + getBotToken() + "/" + filePath;
+                        sendMessage(chatId, "Please enter the task deadline date (e.g., 2024-08-15):");
                         currentStep = "TASK_DEADLINE_DATE";
                     } catch (TelegramApiException e) {
                         e.printStackTrace();
                     }
+                }
+            } else if (message.hasVideo() && currentStep.equals("TASK_MEDIA_UPLOAD")) {
+                String fileId = message.getVideo().getFileId();
+                try {
+                    String filePath = execute(new GetFile(fileId)).getFilePath();
+                    deleteMessage(chatId, messageId - 1);
+                    deleteMessage(chatId, messageId );
+                    taskMediaUrl = "https://api.telegram.org/file/bot" + getBotToken() + "/" + filePath;
+                    sendMessage(chatId, "Please enter the task deadline date (e.g., 2024-08-15):");
+                    currentStep = "TASK_DEADLINE_DATE";
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
                 }
             }
         } else if (update.hasCallbackQuery()) {
@@ -129,45 +135,26 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
             long chatId = update.getCallbackQuery().getMessage().getChatId();
             int messageId = update.getCallbackQuery().getMessage().getMessageId();
 
-            if (currentStep.equals("SELECT_DEVELOPER") && callbackData.startsWith("assign:")) {
+            if (currentStep.equals("TASK_MEDIA_CHOICE")) {
+                if (callbackData.equals("upload_photo")) {
+                    isPhoto = true;
+                    sendMessage(chatId, "Please upload the task photo (JPG or PNG format):");
+                } else if (callbackData.equals("upload_video")) {
+                    isPhoto = false;
+                    sendMessage(chatId, "Please upload the task video:");
+                }
+                currentStep = "TASK_MEDIA_UPLOAD";
+            } else if (currentStep.equals("SELECT_DEVELOPER") && callbackData.startsWith("assign:")) {
                 String assignee = callbackData.split(":")[1];
                 String customFieldId = developerNameToCustomFieldId.get(assignee);
-                createJiraTask(taskName, taskDescription, taskImageUrl, taskDeadlineDate, taskDeadlineTime, assignee, customFieldId);
-                deleteMessage(chatId, messageId - 1);
-                sendMessageAndDeletePrevious(chatId, messageId, "Task successfully created and assigned to " + assignee);
-                SendMessage sendMessage =  new SendMessage();
-                sendMessage.setChatId(chatId);
-                sendMessage.setText("Task name: " + taskName
-                + "\nTask description: " + taskDescription
-                + "\nTask deadline date: " + taskDeadlineDate
-                + "\nTask deadline time: " + taskDeadlineTime
-                + "\nTask assignee: " + assignee
-                + "\nAdd task in this format?");
-                InlineKeyboardButton button = new InlineKeyboardButton();
-                InlineKeyboardButton button1 = new InlineKeyboardButton();
-                button.setText("👍");
-                button.setCallbackData("true_add");
-                button1.setText("👎");
-                button1.setCallbackData("false_add");
-                List<InlineKeyboardButton> row = new ArrayList<>();
-                List<InlineKeyboardButton> row1 = new ArrayList<>();
-                InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-                List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
-                row.add(button);
-                row1.add(button1);
-                rowList.add(row);
-                rowList.add(row1);
-                inlineKeyboardMarkup.setKeyboard(rowList);
+                createJiraTask(taskName, taskDescription, taskMediaUrl, taskDeadlineDate, taskDeadlineTime, assignee, customFieldId);
+                sendMessage(chatId, "Task successfully created and assigned to " + assignee);
                 currentStep = "START";
             }
         }
     }
 
-    private void sendMessageAndDeletePrevious(long chatId, int messageId, String text) {
-        // Delete previous message
-        deleteMessage(chatId, messageId);
-
-        // Send new message
+    private void sendMessage(long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText(text);
@@ -189,9 +176,40 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendDeveloperSelectionMessage(long chatId, int messageId) {
-        sendMessageAndDeletePrevious(chatId, messageId, "Please select a developer to assign the task:");
-        deleteMessage(chatId, messageId -1);
+    private void sendMediaChoiceMessage(long chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText("Would you like to upload a photo or video?");
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<InlineKeyboardButton> row1 = new ArrayList<>();
+        List<InlineKeyboardButton> row2 = new ArrayList<>();
+        List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
+
+        InlineKeyboardButton photoButton = new InlineKeyboardButton();
+        photoButton.setText("Photo");
+        photoButton.setCallbackData("upload_photo");
+        row1.add(photoButton);
+
+        InlineKeyboardButton videoButton = new InlineKeyboardButton();
+        videoButton.setText("Video");
+        videoButton.setCallbackData("upload_video");
+        row2.add(videoButton);
+
+        buttons.add(row1);
+        buttons.add(row2);
+
+        markup.setKeyboard(buttons);
+        message.setReplyMarkup(markup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendDeveloperSelectionMessage(long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText("Please select a developer to assign the task:");
@@ -199,7 +217,6 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
 
-        // Get developers from Jira
         List<String> developers = getDevelopers();
         for (String developer : developers) {
             InlineKeyboardButton button = new InlineKeyboardButton();
@@ -239,7 +256,7 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
                 if ("atlassian".equals(developer.accountType) && developer.active) {
                     developers.add(developer.displayName);
                     developerNameToAccountId.put(developer.displayName, developer.accountId);
-                    developerNameToCustomFieldId.put(developer.displayName, "customfield_10032"); // This is just an example, replace with actual logic
+                    developerNameToCustomFieldId.put(developer.displayName, "customfield_10032"); // Example, replace with actual logic
                 }
             }
         } catch (IOException e) {
@@ -249,18 +266,17 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
         return developers;
     }
 
-    private void createJiraTask(String summary, String description, String imageUrl, String deadlineDate, String deadlineTime, String assignee, String customFieldId) {
+    private void createJiraTask(String summary, String description, String mediaUrl, String deadlineDate, String deadlineTime, String assignee, String customFieldId) {
         OkHttpClient client = new OkHttpClient();
 
-        // Convert time to ISO 8601 format
-        String isoDateTime = deadlineDate + "T" + deadlineTime + "+05:00"; // Adjust the time zone offset as needed
+        String isoDateTime = deadlineDate + "T" + deadlineTime + "+05:00";
 
         String adfDescription = "{"
                 + "\"type\": \"doc\","
                 + "\"version\": 1,"
                 + "\"content\": ["
                 + "    {\"type\": \"paragraph\",\"content\": [{\"type\": \"text\",\"text\": \"" + description + "\"}]},"
-                + "    {\"type\": \"paragraph\",\"content\": [{\"type\": \"text\",\"text\": \"Image: " + imageUrl + "\"}]},"
+                + "    {\"type\": \"paragraph\",\"content\": [{\"type\": \"text\",\"text\": \"Media: " + mediaUrl + "\"}]},"
                 + "    {\"type\": \"paragraph\",\"content\": [{\"type\": \"text\",\"text\": \"Deadline time: " + deadlineTime + "\"}]}"
                 + "]"
                 + "}";
@@ -276,8 +292,6 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
                 + "\"" + customFieldId + "\": \"" + isoDateTime + "\""
                 + "}}";
 
-        System.out.println("JSON Data: " + json); // Log the JSON data
-
         RequestBody body = RequestBody.create(json, MediaType.get("application/json; charset=utf-8"));
 
         Request request = new Request.Builder()
@@ -288,7 +302,7 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
 
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                System.out.println("Response: " + response.body().string()); // Log the response body for error details
+                System.out.println("Response: " + response.body().string());
                 throw new IOException("Unexpected code " + response);
             }
             System.out.println("Task created: " + response.body().string());
@@ -297,7 +311,7 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-   static class Developer {
+    static class Developer {
         String displayName;
         String accountId;
         String accountType;
