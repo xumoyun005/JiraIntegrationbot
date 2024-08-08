@@ -3,7 +3,6 @@ package org.example;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
@@ -33,7 +32,6 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
     private String taskDeadlineTime;
     private final Map<String, String> developerNameToCustomFieldId = new HashMap<>();
     private final Map<String, String> developerNameToAccountId = new HashMap<>();
-    private boolean isPhoto = false;
 
     public static void main(String[] args) {
         try {
@@ -136,11 +134,11 @@ public class JiraTelegramBot extends TelegramLongPollingBot {
             int messageId = update.getCallbackQuery().getMessage().getMessageId();
 
             if (currentStep.equals("TASK_MEDIA_CHOICE")) {
+                boolean isPhoto = false;
                 if (callbackData.equals("upload_photo")) {
                     isPhoto = true;
                     sendMessage(chatId, "Please upload the task photo (JPG or PNG format):");
                 } else if (callbackData.equals("upload_video")) {
-                    isPhoto = false;
                     sendMessage(chatId, "Please upload the task video:");
                 }
                 currentStep = "TASK_MEDIA_UPLOAD";
